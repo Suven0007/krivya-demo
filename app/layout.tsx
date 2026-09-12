@@ -15,16 +15,16 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Krivya | Personalized Gifts Across Miles",
+  title: "Krivya | Love Across Miles",
   description:
-    "A concept redesign for Krivya, a personalized gifting experience for thoughtful hampers, flowers, chocolates, baby gifts, and keepsakes.",
+    "Build a personalized Krivya gift request with flowers, chocolates, keepsakes, photos, and custom details before continuing on WhatsApp.",
   icons: {
     icon: "/favicon.svg",
   },
   openGraph: {
-    title: "Krivya | Personalized Gifts Across Miles",
+    title: "Krivya | Love Across Miles",
     description:
-      "Create a personal gift with Krivya using flowers, chocolates, keepsakes, photos, and custom details.",
+      "Create a personal gift request with Krivya using flowers, chocolates, keepsakes, photos, and custom details.",
     type: "website",
   },
 };
