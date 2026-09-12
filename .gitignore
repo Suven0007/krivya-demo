@@ -1,0 +1,22 @@
+# dependencies
+node_modules/
+
+# next
+.next/
+out/
+
+# production
+build/
+dist/
+
+# local runtime
+.sites-runtime/
+
+# misc
+.DS_Store
+*.pem
+tsconfig.tsbuildinfo
+
+# env
+.env*
+!.env.example

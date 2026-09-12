@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Krivya">
+  <rect width="64" height="64" rx="14" fill="#5f183c"/>
+  <path d="M18 40h28v10H18z" fill="#f6bf56"/>
+  <path d="M20 25h24v15H20z" fill="#fff5f6"/>
+  <path d="M32 25v25" stroke="#c23766" stroke-width="4"/>
+  <path d="M32 23c-9-9-19 2-7 8 3 2 6 3 7 4 1-1 4-2 7-4 12-6 2-17-7-8z" fill="#f7dbe3"/>
+</svg>
