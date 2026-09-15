@@ -261,14 +261,14 @@ export function GiftBuilder() {
 
         <form onSubmit={handleSubmit}>
           {step === "shop" ? (
-            <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
-              <div>
-                <div className="mb-6 flex gap-2 overflow-x-auto pb-2" aria-label="Gift categories">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+              <div className="min-w-0">
+                <div className="mb-5 flex max-w-full gap-2 overflow-x-auto pb-2" aria-label="Gift categories">
                   {categoryFilters.map((category) => (
                     <button
                       key={category}
                       type="button"
-                      className={`focus-ring min-w-fit rounded-full px-4 py-3 text-sm font-black transition ${
+                      className={`focus-ring shrink-0 rounded-full px-4 py-2.5 text-xs font-black transition sm:text-sm ${
                         activeCategory === category ? "bg-ribbon text-ink" : "bg-white/10 text-white hover:bg-white/18"
                       }`}
                       onClick={() => setActiveCategory(category)}
@@ -284,24 +284,24 @@ export function GiftBuilder() {
                   </div>
                 ) : null}
 
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
                   {filteredCatalog.map((item) => {
                     const basketEntry = basket.find((entry) => entry.item.id === item.id);
+                    const wasJustAdded = lastAdded === item.name;
 
                     return (
-                      <article key={item.id} className="group overflow-hidden rounded-2xl bg-white text-ink shadow-soft">
-                        <div className="relative aspect-[4/5] overflow-hidden bg-petal">
-                          <Image src={item.imagePath} alt={item.name} fill sizes="(min-width: 1280px) 25vw, (min-width: 640px) 45vw, 92vw" className="object-cover transition duration-500 group-hover:scale-105" />
+                      <article key={item.id} className="group min-w-0 overflow-hidden rounded-2xl bg-white text-ink shadow-soft">
+                        <div className="relative aspect-square overflow-hidden bg-petal">
+                          <Image src={item.imagePath} alt={item.name} fill sizes="(min-width: 1280px) 18vw, (min-width: 768px) 30vw, 46vw" className="object-cover transition duration-500 group-hover:scale-105" />
                         </div>
-                        <div className="p-5">
-                          <p className="text-xs font-black uppercase tracking-[0.16em] text-rose">{getStoreCategory(item)}</p>
-                          <h3 className="mt-2 text-xl font-black">{item.name}</h3>
-                          <p className="mt-2 text-sm leading-6 text-ink/62">{item.description}</p>
-                          <div className="mt-5 flex items-center gap-3">
-                            <button type="button" className="focus-ring flex-1 rounded-full bg-plum px-4 py-3 text-sm font-black text-white transition hover:bg-rose" onClick={() => addItem(item)}>
-                              Add to Gift
+                        <div className="min-w-0 p-3 sm:p-4">
+                          <p className="truncate text-[0.65rem] font-black uppercase tracking-[0.12em] text-rose sm:text-xs">{getStoreCategory(item)}</p>
+                          <h3 className="mt-1 min-h-10 text-sm font-black leading-5 sm:text-base">{item.name}</h3>
+                          <div className="mt-3 flex min-w-0 items-center gap-2">
+                            <button type="button" className="focus-ring min-h-10 min-w-0 flex-1 rounded-full bg-plum px-3 py-2 text-xs font-black text-white transition hover:bg-rose sm:px-4 sm:text-sm" onClick={() => addItem(item)}>
+                              {wasJustAdded ? "Added ✓" : "Add to Gift"}
                             </button>
-                            {basketEntry ? <span className="rounded-full bg-petal px-3 py-2 text-xs font-black text-plum">x{basketEntry.quantity}</span> : null}
+                            {basketEntry ? <span className="shrink-0 rounded-full bg-petal px-2.5 py-1.5 text-xs font-black text-plum">x{basketEntry.quantity}</span> : null}
                           </div>
                         </div>
                       </article>
@@ -469,15 +469,17 @@ export function GiftBuilder() {
             </section>
           ) : null}
         </form>
+        <div className="h-20 lg:hidden" aria-hidden="true" />
       </div>
 
       <button
         type="button"
-        className="focus-ring fixed bottom-4 left-4 right-4 z-30 rounded-full bg-ribbon px-5 py-4 text-sm font-black text-ink shadow-soft lg:hidden"
+        className="focus-ring fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 right-4 z-30 flex items-center justify-between gap-3 rounded-full bg-ribbon px-4 py-3 text-sm font-black text-ink shadow-soft lg:hidden"
         onClick={() => setBasketOpen(true)}
         aria-label={`Open your gift basket with ${itemCount} items`}
       >
-        Your Gift · {itemCount}
+        <span>Your Gift · {itemCount}</span>
+        <span className="shrink-0">View Basket →</span>
       </button>
     </section>
   );
