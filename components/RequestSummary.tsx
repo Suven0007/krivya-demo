@@ -27,7 +27,7 @@ export function RequestSummary({ requestCode }: { requestCode: string }) {
         <p className="mt-4 max-w-xl text-lg leading-8 text-ink/70">
           This demo stores gift requests in the browser where they were created. If this Request ID was created on another device or browser, it will not appear here yet.
         </p>
-        <Link className="focus-ring mt-8 inline-flex rounded-full bg-plum px-6 py-4 text-base font-black text-white" href="/#create-gift">
+        <Link className="focus-ring mt-8 inline-flex rounded-full bg-plum px-6 py-4 text-base font-black text-white" href="/gifts">
           Create a Gift Request
         </Link>
       </Shell>
@@ -51,7 +51,7 @@ export function RequestSummary({ requestCode }: { requestCode: string }) {
             <a className="focus-ring rounded-full bg-plum px-6 py-4 text-center text-base font-black text-white transition hover:bg-rose" href={buildKrivyaRequestWhatsAppUrl(request.requestCode)} target="_blank" rel="noreferrer">
               Continue on WhatsApp
             </a>
-            <Link className="focus-ring rounded-full border border-plum/20 px-6 py-4 text-center text-base font-black text-plum transition hover:bg-petal" href="/#create-gift">
+            <Link className="focus-ring rounded-full border border-plum/20 px-6 py-4 text-center text-base font-black text-plum transition hover:bg-petal" href="/gifts">
               Explore More Gifts
             </Link>
           </div>

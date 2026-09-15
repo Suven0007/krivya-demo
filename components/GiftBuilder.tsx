@@ -236,14 +236,14 @@ export function GiftBuilder() {
   }
 
   return (
-    <section id="create-gift" className="section-pad bg-ink px-4 text-white sm:px-6 lg:px-8">
+    <section id="create-gift" className="px-4 pb-24 pt-10 text-white sm:px-6 sm:pt-14 lg:px-8 lg:pb-16">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
           <div>
             <p className="mb-3 text-sm font-bold uppercase tracking-[0.22em] text-ribbon">Gift Store</p>
-            <h2 className="font-serif text-4xl font-bold text-balance sm:text-5xl">Choose something special first.</h2>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-white/72">
-              Browse Krivya gift ideas, add what feels right, then share one clear Request ID on WhatsApp.
+            <h1 className="font-serif text-4xl font-bold text-balance sm:text-5xl">Build Your Gift.</h1>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-white/72 sm:text-lg">
+              Choose the pieces that make it theirs, then add delivery and personalization details before sending one Request ID to Krivya.
             </p>
           </div>
           <button
@@ -285,14 +285,21 @@ export function GiftBuilder() {
                 ) : null}
 
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
-                  {filteredCatalog.map((item) => {
+                  {filteredCatalog.map((item, index) => {
                     const basketEntry = basket.find((entry) => entry.item.id === item.id);
                     const wasJustAdded = lastAdded === item.name;
 
                     return (
                       <article key={item.id} className="group min-w-0 overflow-hidden rounded-2xl bg-white text-ink shadow-soft">
                         <div className="relative aspect-square overflow-hidden bg-petal">
-                          <Image src={item.imagePath} alt={item.name} fill sizes="(min-width: 1280px) 18vw, (min-width: 768px) 30vw, 46vw" className="object-cover transition duration-500 group-hover:scale-105" />
+                          <Image
+                            src={item.imagePath}
+                            alt={item.name}
+                            fill
+                            sizes="(min-width: 1280px) 18vw, (min-width: 768px) 30vw, 46vw"
+                            priority={index < 2}
+                            className="object-cover transition duration-500 group-hover:scale-105"
+                          />
                         </div>
                         <div className="min-w-0 p-3 sm:p-4">
                           <p className="truncate text-[0.65rem] font-black uppercase tracking-[0.12em] text-rose sm:text-xs">{getStoreCategory(item)}</p>
