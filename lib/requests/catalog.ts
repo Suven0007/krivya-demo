@@ -15,7 +15,7 @@ export const giftCatalog: GiftItem[] = [
   {
     id: "KRV-CHC-01",
     name: "Chocolate selection inspiration",
-    category: "Chocolate",
+    category: "Chocolates",
     imagePath: "/images/22.jpeg",
     description: "Chocolate components Krivya can review for availability before confirming.",
   },
@@ -36,7 +36,7 @@ export const giftCatalog: GiftItem[] = [
   {
     id: "KRV-MUG-01",
     name: "Custom mug inspiration",
-    category: "Mugs",
+    category: "Personalized Mugs",
     imagePath: "/images/24.jpeg",
     description: "A practical keepsake that can carry a personal photo or memory.",
   },

@@ -64,6 +64,10 @@ function isValidPhone(value: string) {
   return value.replace(/\D/g, "").length >= 7;
 }
 
+function isValidDeliveryDate(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
 export function GiftBuilder() {
   const [step, setStep] = useState(1);
   const [basket, setBasket] = useState<GiftBasketItem[]>([]);
@@ -85,7 +89,6 @@ export function GiftBuilder() {
   }, [basket]);
 
   const itemCount = useMemo(() => basket.reduce((total, entry) => total + entry.quantity, 0), [basket]);
-  const selectedCategories = useMemo(() => new Set(basket.map((entry) => entry.item.category)), [basket]);
 
   function updateDetails<Field extends keyof CustomerDetails>(field: Field, value: CustomerDetails[Field]) {
     setDetails((current) => ({ ...current, [field]: value }));
@@ -136,7 +139,10 @@ export function GiftBuilder() {
     if (!details.preferredDeliveryDate) {
       nextErrors.push("Choose a preferred delivery date.");
     }
-    if (details.preferredDeliveryDate && details.preferredDeliveryDate < todayIsoDate()) {
+    if (details.preferredDeliveryDate && !isValidDeliveryDate(details.preferredDeliveryDate)) {
+      nextErrors.push("Choose a valid preferred delivery date.");
+    }
+    if (details.preferredDeliveryDate && isValidDeliveryDate(details.preferredDeliveryDate) && details.preferredDeliveryDate < todayIsoDate()) {
       nextErrors.push("Preferred delivery date cannot be in the past.");
     }
     if (!details.budget.trim()) {
@@ -147,6 +153,17 @@ export function GiftBuilder() {
     }
 
     return nextErrors;
+  }
+
+  function proceedToReview() {
+    const nextErrors = validateRequest();
+    setErrors(nextErrors);
+
+    if (nextErrors.length === 0) {
+      setStep(5);
+    } else {
+      setStep(4);
+    }
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -167,7 +184,7 @@ export function GiftBuilder() {
     setSubmittedRequest(request);
     setBasket([]);
     saveBasket([]);
-    setStep(5);
+    setStep(6);
   }
 
   return (
@@ -190,15 +207,21 @@ export function GiftBuilder() {
         </div>
 
         <div className="mb-5 flex gap-2 overflow-x-auto pb-2" aria-label="Gift builder progress">
-          {["Destination", "Occasion", "Build", "Review", "Request ID"].map((label, index) => (
+          {["Destination", "Occasion", "Build", "Details", "Review", "Request ID"].map((label, index) => (
             <button
               key={label}
               type="button"
               className={`focus-ring min-w-fit rounded-full px-4 py-3 text-sm font-black transition ${
                 step === index + 1 ? "bg-ribbon text-ink" : "bg-white/10 text-white hover:bg-white/18"
               }`}
-              onClick={() => setStep(index + 1)}
-              disabled={index + 1 === 5 && !submittedRequest}
+              onClick={() => {
+                if (index + 1 === 5) {
+                  proceedToReview();
+                  return;
+                }
+                setStep(index + 1);
+              }}
+              disabled={index + 1 === 6 && !submittedRequest}
             >
               {index + 1}. {label}
             </button>
@@ -281,7 +304,7 @@ export function GiftBuilder() {
                           className="focus-ring mt-4 w-full rounded-full bg-plum px-4 py-3 text-sm font-black text-white transition hover:bg-rose"
                           onClick={() => addItem(item)}
                         >
-                          {selectedCategories.has(item.category) ? "Add another" : "Add to Gift"}
+                          Add to Gift
                         </button>
                       </div>
                     </article>
@@ -336,25 +359,81 @@ export function GiftBuilder() {
               </div>
             ) : null}
 
-            {step === 5 && submittedRequest ? (
+            {step === 5 && !submittedRequest ? (
+              <div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="font-serif text-3xl font-bold">Review Your Gift</h3>
+                    <p className="mt-3 max-w-2xl text-base leading-7 text-ink/68">
+                      Check the request before Krivya receives the local demo record and Request ID.
+                    </p>
+                  </div>
+                  <button type="button" className="focus-ring rounded-full border border-plum/20 px-5 py-3 text-sm font-black text-plum" onClick={() => setStep(4)}>
+                    Edit details
+                  </button>
+                </div>
+
+                <div className="mt-6 grid gap-5 xl:grid-cols-[1fr_0.9fr]">
+                  <section className="rounded-2xl border border-plum/10 bg-petal p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-rose">Selected gift components</p>
+                    <div className="mt-4 grid gap-3">
+                      {basket.map((entry) => (
+                        <article key={entry.item.id} className="grid grid-cols-[72px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-white p-3">
+                          <div className="relative aspect-square overflow-hidden rounded-xl bg-petal">
+                            <Image src={entry.item.imagePath} alt="" fill sizes="72px" className="object-cover" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-black uppercase tracking-[0.14em] text-rose">{entry.item.category}</p>
+                            <h4 className="mt-1 text-sm font-black">{entry.item.name}</h4>
+                            <p className="mt-1 text-xs leading-5 text-ink/55">{entry.item.description}</p>
+                          </div>
+                          <p className="rounded-full bg-petal px-3 py-1 text-sm font-black">x{entry.quantity}</p>
+                        </article>
+                      ))}
+                    </div>
+                    <p className="mt-4 text-sm font-semibold leading-6 text-ink/62">Final availability and pricing will be confirmed by Krivya.</p>
+                  </section>
+
+                  <section className="rounded-2xl border border-plum/10 bg-white p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-rose">Request details</p>
+                    <div className="mt-4 grid gap-3">
+                      <ReviewRow label="Destination" value={details.destination} />
+                      <ReviewRow label="Occasion" value={details.occasion} />
+                      <ReviewRow label="Recipient" value={details.recipient} />
+                      <ReviewRow label="Preferred date" value={details.preferredDeliveryDate} />
+                      <ReviewRow label="Approximate budget" value={details.budget} />
+                      <ReviewRow label="Customer" value={details.customerName} />
+                      <ReviewRow label="Phone / WhatsApp" value={details.phone} />
+                      <ReviewRow label="Email" value={details.email || "Not provided"} />
+                      <ReviewRow label="Personalization" value={details.personalizationNotes || "Not provided"} />
+                      <ReviewRow label="Gift message" value={details.giftMessage || "Not provided"} />
+                      <ReviewRow label="Additional notes" value={details.additionalNotes || "Not provided"} />
+                    </div>
+                  </section>
+                </div>
+              </div>
+            ) : null}
+
+            {step === 6 && submittedRequest ? (
               <div className="rounded-[1.5rem] bg-petal p-6 text-center">
                 <p className="text-sm font-black uppercase tracking-[0.18em] text-rose">Your gift request is ready.</p>
-                <h3 className="mt-4 font-serif text-4xl font-bold text-plum">{submittedRequest.requestCode}</h3>
+                <p className="mt-4 text-sm font-black uppercase tracking-[0.18em] text-ink/55">Gift Request ID</p>
+                <h3 className="mt-2 font-serif text-4xl font-bold text-plum">{submittedRequest.requestCode}</h3>
                 <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-ink/70">
-                  Continue to WhatsApp and send your Request ID to Krivya. They can review your gift details and confirm availability.
+                  Continue to WhatsApp and send your Request ID to Krivya. Your gift selections and details are saved with this request.
                 </p>
                 <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
                   <a className="focus-ring rounded-full bg-plum px-6 py-4 text-base font-black text-white transition hover:bg-rose" href={buildKrivyaRequestWhatsAppUrl(submittedRequest.requestCode)} target="_blank" rel="noreferrer">
                     Continue on WhatsApp
                   </a>
                   <Link className="focus-ring rounded-full border border-plum/20 px-6 py-4 text-base font-black text-plum transition hover:bg-white" href={`/request/${submittedRequest.requestCode}`}>
-                    View Request
+                    View My Request
                   </Link>
                 </div>
               </div>
             ) : null}
 
-            {step < 5 ? (
+            {step < 6 ? (
               <div className="mt-8 flex flex-col gap-3 border-t border-plum/10 pt-6 sm:flex-row sm:justify-between">
                 <button
                   type="button"
@@ -368,9 +447,13 @@ export function GiftBuilder() {
                   <button type="button" className="focus-ring rounded-full bg-plum px-6 py-4 text-base font-black text-white transition hover:bg-rose" onClick={() => setStep((current) => current + 1)}>
                     Continue
                   </button>
+                ) : step === 4 ? (
+                  <button type="button" className="focus-ring rounded-full bg-plum px-6 py-4 text-base font-black text-white transition hover:bg-rose" onClick={proceedToReview}>
+                    Review Your Gift
+                  </button>
                 ) : (
                   <button type="submit" className="focus-ring rounded-full bg-plum px-6 py-4 text-base font-black text-white transition hover:bg-rose">
-                    Send Gift Request
+                    Create Gift Request
                   </button>
                 )}
               </div>
@@ -445,6 +528,15 @@ function TextArea({ label, value, onChange, placeholder }: { label: string; valu
   );
 }
 
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-petal px-4 py-3">
+      <p className="text-xs font-black uppercase tracking-[0.14em] text-rose">{label}</p>
+      <p className="mt-1 text-sm font-bold leading-6 text-ink/75">{value}</p>
+    </div>
+  );
+}
+
 function BasketPanel({
   basket,
   itemCount,
@@ -481,6 +573,7 @@ function BasketPanel({
           </button>
         </div>
         <p className="mt-2 text-sm leading-6 text-ink/62">{itemCount} selected component{itemCount === 1 ? "" : "s"}</p>
+        <p className="mt-2 text-sm font-semibold leading-6 text-ink/62">Final availability and pricing will be confirmed by Krivya.</p>
 
         {basket.length === 0 ? (
           <div className="mt-6 rounded-2xl bg-petal p-5 text-sm leading-6 text-ink/68">Add flowers, chocolates, keepsakes, or other inspiration to prepare a clearer request.</div>

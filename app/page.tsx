@@ -46,20 +46,12 @@ const gallery = [
   "/images/3.jpeg",
   "/images/4.jpeg",
   "/images/5.jpeg",
-  "/images/6.jpeg",
-  "/images/7.jpeg",
   "/images/8.jpeg",
-  "/images/9.jpeg",
   "/images/10.jpeg",
-  "/images/11.jpeg",
-  "/images/12.jpeg",
   "/images/13.jpeg",
-  "/images/14.jpeg",
   "/images/15.jpeg",
   "/images/16.jpeg",
   "/images/17.jpeg",
-  "/images/26.jpeg",
-  "/images/28.jpeg",
   "/images/29.jpeg",
 ];
 
@@ -255,6 +247,8 @@ export default function Home() {
         </div>
       </section>
 
+      <GiftBuilder />
+
       <section id="personalize" className="section-pad px-4 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
           <div>
@@ -273,21 +267,6 @@ export default function Home() {
                 <figcaption className="px-4 py-3 text-sm font-black text-ink">{detail.label}</figcaption>
               </figure>
             ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="section-pad bg-white/72 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
-          <div className="relative min-h-[520px] overflow-hidden rounded-[2rem] shadow-soft">
-            <Image src="/images/16.jpeg" alt="Krivya gift with a personal card, teddy bear, mug, and photo frame" fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
-          </div>
-          <div>
-            <p className="mb-3 text-sm font-bold uppercase tracking-[0.22em] text-rose">Brand story</p>
-            <h2 className="font-serif text-4xl font-bold text-ink text-balance sm:text-5xl">For distance, celebration, apology, surprise, and everyday love.</h2>
-            <p className="mt-5 text-lg leading-8 text-ink/70">
-              Krivya’s gifts feel personal through tactile boxes, rich florals, photographed memories, handwritten cards, and treats chosen with care.
-            </p>
           </div>
         </div>
       </section>
@@ -351,8 +330,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      <GiftBuilder />
 
       <section className="px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 rounded-[2rem] bg-white p-8 shadow-soft md:flex-row md:items-center md:justify-between">

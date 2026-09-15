@@ -6,10 +6,10 @@ export type GiftOccasion = "Birthday" | "Anniversary" | "Love & Romance" | "Cong
 
 export type GiftCategory =
   | "Flowers"
-  | "Chocolate"
+  | "Chocolates"
   | "Teddy Bears"
   | "Photo Frames"
-  | "Mugs"
+  | "Personalized Mugs"
   | "Candles"
   | "Perfume"
   | "Keepsakes"
