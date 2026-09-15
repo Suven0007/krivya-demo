@@ -1,7 +1,7 @@
 export const krivyaWhatsAppNumber = "9779851414905";
 
 export function buildKrivyaRequestWhatsAppUrl(requestCode: string) {
-  const message = `Hi Krivya, I'd like to create a personalized gift.\n\nRequest ID: ${requestCode}\n\nKindly review my request and confirm availability.`;
+  const message = `Hi Krivya, I've created a personalized gift request.\n\nRequest ID: ${requestCode}\n\nKindly review my request and confirm availability.`;
   return `https://wa.me/${krivyaWhatsAppNumber}?text=${encodeURIComponent(message)}`;
 }
 

@@ -45,7 +45,6 @@ export function RequestSummary({ requestCode }: { requestCode: string }) {
             <SummaryRow label="Destination" value={request.customer.destination} />
             <SummaryRow label="Occasion" value={request.customer.occasion} />
             <SummaryRow label="Preferred date" value={request.customer.preferredDeliveryDate} />
-            <SummaryRow label="Approximate budget" value={request.customer.budget} />
             <SummaryRow label="Created" value={new Date(request.createdAt).toLocaleString()} />
           </div>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -53,7 +52,7 @@ export function RequestSummary({ requestCode }: { requestCode: string }) {
               Continue on WhatsApp
             </a>
             <Link className="focus-ring rounded-full border border-plum/20 px-6 py-4 text-center text-base font-black text-plum transition hover:bg-petal" href="/#create-gift">
-              Build Another Gift
+              Explore More Gifts
             </Link>
           </div>
         </section>

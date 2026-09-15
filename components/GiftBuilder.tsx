@@ -25,6 +25,10 @@ const initialDetails: CustomerDetails = {
   additionalNotes: "",
 };
 
+const categoryFilters = ["All", "Flowers", "Chocolates", "Teddy Bears", "Personalized Gifts", "Keepsakes", "Fragrance", "Gift Boxes"] as const;
+type StoreCategory = (typeof categoryFilters)[number];
+type BuilderStep = "shop" | "details" | "review" | "success";
+
 function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -68,13 +72,35 @@ function isValidDeliveryDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
+function getStoreCategory(item: GiftItem): StoreCategory {
+  if (item.category === "Perfume") {
+    return "Fragrance";
+  }
+
+  if (item.category === "Photo Frames" || item.category === "Personalized Mugs") {
+    return "Personalized Gifts";
+  }
+
+  if (item.category === "Message Bottles" || item.category === "Accessories" || item.category === "Other Inspiration") {
+    return "Keepsakes";
+  }
+
+  if (item.category === "Flowers" || item.category === "Chocolates" || item.category === "Teddy Bears" || item.category === "Gift Boxes") {
+    return item.category;
+  }
+
+  return "Keepsakes";
+}
+
 export function GiftBuilder() {
-  const [step, setStep] = useState(1);
+  const [activeCategory, setActiveCategory] = useState<StoreCategory>("All");
+  const [step, setStep] = useState<BuilderStep>("shop");
   const [basket, setBasket] = useState<GiftBasketItem[]>([]);
   const [details, setDetails] = useState<CustomerDetails>(initialDetails);
   const [submittedRequest, setSubmittedRequest] = useState<GiftRequest | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [basketOpen, setBasketOpen] = useState(false);
+  const [lastAdded, setLastAdded] = useState("");
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -88,7 +114,20 @@ export function GiftBuilder() {
     saveBasket(basket);
   }, [basket]);
 
+  useEffect(() => {
+    if (!lastAdded) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setLastAdded(""), 2200);
+    return () => window.clearTimeout(timer);
+  }, [lastAdded]);
+
   const itemCount = useMemo(() => basket.reduce((total, entry) => total + entry.quantity, 0), [basket]);
+  const filteredCatalog = useMemo(
+    () => (activeCategory === "All" ? giftCatalog : giftCatalog.filter((item) => getStoreCategory(item) === activeCategory)),
+    [activeCategory],
+  );
 
   function updateDetails<Field extends keyof CustomerDetails>(field: Field, value: CustomerDetails[Field]) {
     setDetails((current) => ({ ...current, [field]: value }));
@@ -103,14 +142,14 @@ export function GiftBuilder() {
 
       return [...current, { item, quantity: 1 }];
     });
-    setBasketOpen(true);
+    setLastAdded(item.name);
   }
 
   function updateQuantity(itemId: string, quantity: number) {
     setBasket((current) =>
-      current
-        .map((entry) => (entry.item.id === itemId ? { ...entry, quantity: Math.max(1, quantity) } : entry))
-        .filter((entry) => entry.quantity > 0),
+      quantity < 1
+        ? current.filter((entry) => entry.item.id !== itemId)
+        : current.map((entry) => (entry.item.id === itemId ? { ...entry, quantity } : entry)),
     );
   }
 
@@ -124,6 +163,9 @@ export function GiftBuilder() {
 
   function validateRequest() {
     const nextErrors: string[] = [];
+    if (basket.length === 0) {
+      nextErrors.push("Add at least one gift item.");
+    }
     if (!details.customerName.trim()) {
       nextErrors.push("Add your name.");
     }
@@ -145,14 +187,19 @@ export function GiftBuilder() {
     if (details.preferredDeliveryDate && isValidDeliveryDate(details.preferredDeliveryDate) && details.preferredDeliveryDate < todayIsoDate()) {
       nextErrors.push("Preferred delivery date cannot be in the past.");
     }
-    if (!details.budget.trim()) {
-      nextErrors.push("Add an approximate budget.");
-    }
-    if (basket.length === 0) {
-      nextErrors.push("Add at least one gift component.");
-    }
 
     return nextErrors;
+  }
+
+  function startDetails() {
+    setErrors([]);
+    if (basket.length === 0) {
+      setBasketOpen(true);
+      return;
+    }
+
+    setBasketOpen(false);
+    setStep("details");
   }
 
   function proceedToReview() {
@@ -160,9 +207,10 @@ export function GiftBuilder() {
     setErrors(nextErrors);
 
     if (nextErrors.length === 0) {
-      setStep(5);
+      setStep("review");
+      setBasketOpen(false);
     } else {
-      setStep(4);
+      setStep("details");
     }
   }
 
@@ -172,19 +220,19 @@ export function GiftBuilder() {
     setErrors(nextErrors);
 
     if (nextErrors.length > 0) {
-      setStep(4);
+      setStep("details");
       return;
     }
 
     const request = localRequestRepository.createRequest({
-      customer: details,
+      customer: { ...details, budget: "" },
       items: basket,
     });
 
     setSubmittedRequest(request);
     setBasket([]);
     saveBasket([]);
-    setStep(6);
+    setStep("success");
   }
 
   return (
@@ -192,295 +240,278 @@ export function GiftBuilder() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
           <div>
-            <p className="mb-3 text-sm font-bold uppercase tracking-[0.22em] text-ribbon">Gift Builder</p>
-            <h2 className="font-serif text-4xl font-bold text-balance sm:text-5xl">Build a complete request before WhatsApp.</h2>
+            <p className="mb-3 text-sm font-bold uppercase tracking-[0.22em] text-ribbon">Gift Store</p>
+            <h2 className="font-serif text-4xl font-bold text-balance sm:text-5xl">Choose something special first.</h2>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-white/72">
-              Choose the direction, add gift inspiration, and send Krivya one clear Request ID instead of a long chat thread.
+              Browse Krivya gift ideas, add what feels right, then share one clear Request ID on WhatsApp.
             </p>
           </div>
-          <div className="rounded-3xl bg-white/8 p-5 ring-1 ring-white/12">
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-ribbon">Demo storage</p>
-            <p className="mt-2 text-sm leading-6 text-white/70">
-              Requests are saved in this browser for the demo dashboard. A future production version should replace this with Supabase.
-            </p>
-          </div>
+          <button
+            type="button"
+            className="focus-ring flex items-center justify-between gap-4 rounded-3xl bg-white/8 p-5 text-left ring-1 ring-white/12 transition hover:bg-white/12"
+            onClick={() => setBasketOpen(true)}
+          >
+            <span>
+              <span className="block text-sm font-bold uppercase tracking-[0.18em] text-ribbon">Your Gift</span>
+              <span className="mt-2 block text-sm leading-6 text-white/70">Open your basket, adjust quantities, then continue to request details.</span>
+            </span>
+            <span className="grid size-12 shrink-0 place-items-center rounded-full bg-ribbon text-lg font-black text-ink">{itemCount}</span>
+          </button>
         </div>
 
-        <div className="mb-5 flex gap-2 overflow-x-auto pb-2" aria-label="Gift builder progress">
-          {["Destination", "Occasion", "Build", "Details", "Review", "Request ID"].map((label, index) => (
-            <button
-              key={label}
-              type="button"
-              className={`focus-ring min-w-fit rounded-full px-4 py-3 text-sm font-black transition ${
-                step === index + 1 ? "bg-ribbon text-ink" : "bg-white/10 text-white hover:bg-white/18"
-              }`}
-              onClick={() => {
-                if (index + 1 === 5) {
-                  proceedToReview();
-                  return;
-                }
-                setStep(index + 1);
-              }}
-              disabled={index + 1 === 6 && !submittedRequest}
-            >
-              {index + 1}. {label}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          <form onSubmit={handleSubmit} className="rounded-[2rem] bg-white p-5 text-ink shadow-soft sm:p-8">
-            {step === 1 ? (
+        <form onSubmit={handleSubmit}>
+          {step === "shop" ? (
+            <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
               <div>
-                <h3 className="font-serif text-3xl font-bold">Where should the gift go?</h3>
-                <p className="mt-3 text-base leading-7 text-ink/68">Select the delivery market so Krivya can review availability and timing.</p>
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  {deliveryDestinations.map((destination) => (
+                <div className="mb-6 flex gap-2 overflow-x-auto pb-2" aria-label="Gift categories">
+                  {categoryFilters.map((category) => (
                     <button
-                      key={destination}
+                      key={category}
                       type="button"
-                      className={`focus-ring rounded-2xl border p-5 text-left text-lg font-black transition ${
-                        details.destination === destination ? "border-plum bg-petal text-plum" : "border-plum/12 bg-white hover:border-plum/45"
+                      className={`focus-ring min-w-fit rounded-full px-4 py-3 text-sm font-black transition ${
+                        activeCategory === category ? "bg-ribbon text-ink" : "bg-white/10 text-white hover:bg-white/18"
                       }`}
-                      onClick={() => updateDetails("destination", destination as DeliveryDestination)}
+                      onClick={() => setActiveCategory(category)}
                     >
-                      {destination}
+                      {category}
                     </button>
                   ))}
                 </div>
-              </div>
-            ) : null}
 
-            {step === 2 ? (
-              <div>
-                <h3 className="font-serif text-3xl font-bold">What is the occasion?</h3>
-                <p className="mt-3 text-base leading-7 text-ink/68">This helps Krivya guide the colors, components, and card message tone.</p>
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  {giftOccasions.map((occasion) => (
-                    <button
-                      key={occasion}
-                      type="button"
-                      className={`focus-ring rounded-2xl border p-5 text-left text-lg font-black transition ${
-                        details.occasion === occasion ? "border-plum bg-petal text-plum" : "border-plum/12 bg-white hover:border-plum/45"
-                      }`}
-                      onClick={() => updateDetails("occasion", occasion as GiftOccasion)}
-                    >
-                      {occasion}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {step === 3 ? (
-              <div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <h3 className="font-serif text-3xl font-bold">Add gift inspiration.</h3>
-                    <p className="mt-3 max-w-2xl text-base leading-7 text-ink/68">
-                      These are components and direction, not fixed products or guaranteed stock.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="focus-ring rounded-full border border-plum/20 px-5 py-3 text-sm font-black text-plum lg:hidden"
-                    onClick={() => setBasketOpen(true)}
-                  >
-                    Gift Basket ({itemCount})
-                  </button>
-                </div>
-                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {giftCatalog.map((item) => (
-                    <article key={item.id} className="overflow-hidden rounded-2xl border border-plum/10 bg-white shadow-sm">
-                      <div className="relative aspect-[4/3]">
-                        <Image src={item.imagePath} alt={item.name} fill sizes="(min-width: 1280px) 22vw, (min-width: 768px) 45vw, 90vw" className="object-cover" />
-                      </div>
-                      <div className="p-4">
-                        <p className="text-xs font-black uppercase tracking-[0.16em] text-rose">{item.category}</p>
-                        <h4 className="mt-2 text-lg font-black">{item.name}</h4>
-                        <p className="mt-2 text-sm leading-6 text-ink/64">{item.description}</p>
-                        <button
-                          type="button"
-                          className="focus-ring mt-4 w-full rounded-full bg-plum px-4 py-3 text-sm font-black text-white transition hover:bg-rose"
-                          onClick={() => addItem(item)}
-                        >
-                          Add to Gift
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {step === 4 ? (
-              <div>
-                <h3 className="font-serif text-3xl font-bold">Add request details.</h3>
-                <p className="mt-3 text-base leading-7 text-ink/68">Krivya gets the useful context first, then confirms availability by WhatsApp.</p>
-                {errors.length > 0 ? (
-                  <div className="mt-5 rounded-2xl border border-rose/25 bg-rose/8 p-4" role="alert">
-                    <p className="font-black text-rose">Please check:</p>
-                    <ul className="mt-2 grid gap-1 text-sm text-ink/75">
-                      {errors.map((error) => (
-                        <li key={error}>{error}</li>
-                      ))}
-                    </ul>
+                {lastAdded ? (
+                  <div className="mb-5 rounded-2xl bg-ribbon px-5 py-4 text-sm font-black text-ink" role="status">
+                    Added {lastAdded} to your gift.
                   </div>
                 ) : null}
-                <div className="mt-6 grid gap-5 sm:grid-cols-2">
-                  <TextField label="Customer name" value={details.customerName} onChange={(value) => updateDetails("customerName", value)} required />
-                  <TextField label="Phone or WhatsApp number" value={details.phone} onChange={(value) => updateDetails("phone", value)} required />
-                  <TextField label="Email optional" value={details.email ?? ""} onChange={(value) => updateDetails("email", value)} type="email" />
-                  <TextField label="Recipient / who the gift is for" value={details.recipient} onChange={(value) => updateDetails("recipient", value)} required />
-                  <label className="grid gap-2 text-sm font-black">
-                    Preferred delivery date
-                    <input
-                      className="focus-ring rounded-2xl border border-plum/15 bg-petal px-4 py-3 text-base font-semibold"
-                      type="date"
-                      min={todayIsoDate()}
-                      value={details.preferredDeliveryDate}
-                      onChange={(event) => updateDetails("preferredDeliveryDate", event.target.value)}
-                      required
-                    />
-                  </label>
-                  <TextField label="Approximate budget" value={details.budget} onChange={(value) => updateDetails("budget", value)} placeholder="Example: NPR 8,000 or AUD 120" required />
-                  <TextArea label="Personalization notes" value={details.personalizationNotes} onChange={(value) => updateDetails("personalizationNotes", value)} placeholder="Colors, photos, names, theme, or special details." />
-                  <TextArea label="Gift message / card message" value={details.giftMessage} onChange={(value) => updateDetails("giftMessage", value)} placeholder="Message Krivya should include on the card." />
-                  <label className="grid gap-2 text-sm font-black sm:col-span-2">
-                    Additional notes
-                    <textarea
-                      className="focus-ring min-h-28 rounded-2xl border border-plum/15 bg-petal px-4 py-3 text-base font-semibold"
-                      value={details.additionalNotes}
-                      onChange={(event) => updateDetails("additionalNotes", event.target.value)}
-                      placeholder="Delivery notes, recipient preferences, substitutions, or timing context."
-                    />
-                  </label>
+
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredCatalog.map((item) => {
+                    const basketEntry = basket.find((entry) => entry.item.id === item.id);
+
+                    return (
+                      <article key={item.id} className="group overflow-hidden rounded-2xl bg-white text-ink shadow-soft">
+                        <div className="relative aspect-[4/5] overflow-hidden bg-petal">
+                          <Image src={item.imagePath} alt={item.name} fill sizes="(min-width: 1280px) 25vw, (min-width: 640px) 45vw, 92vw" className="object-cover transition duration-500 group-hover:scale-105" />
+                        </div>
+                        <div className="p-5">
+                          <p className="text-xs font-black uppercase tracking-[0.16em] text-rose">{getStoreCategory(item)}</p>
+                          <h3 className="mt-2 text-xl font-black">{item.name}</h3>
+                          <p className="mt-2 text-sm leading-6 text-ink/62">{item.description}</p>
+                          <div className="mt-5 flex items-center gap-3">
+                            <button type="button" className="focus-ring flex-1 rounded-full bg-plum px-4 py-3 text-sm font-black text-white transition hover:bg-rose" onClick={() => addItem(item)}>
+                              Add to Gift
+                            </button>
+                            {basketEntry ? <span className="rounded-full bg-petal px-3 py-2 text-xs font-black text-plum">x{basketEntry.quantity}</span> : null}
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
               </div>
-            ) : null}
 
-            {step === 5 && !submittedRequest ? (
-              <div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h3 className="font-serif text-3xl font-bold">Review Your Gift</h3>
-                    <p className="mt-3 max-w-2xl text-base leading-7 text-ink/68">
-                      Check the request before Krivya receives the local demo record and Request ID.
-                    </p>
-                  </div>
-                  <button type="button" className="focus-ring rounded-full border border-plum/20 px-5 py-3 text-sm font-black text-plum" onClick={() => setStep(4)}>
-                    Edit details
-                  </button>
+              <BasketPanel basket={basket} itemCount={itemCount} open={basketOpen} onClose={() => setBasketOpen(false)} onClear={clearBasket} onRemove={removeItem} onQuantity={updateQuantity} onContinue={startDetails} />
+            </div>
+          ) : null}
+
+          {step === "details" ? (
+            <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+              <section className="rounded-[2rem] bg-white p-5 text-ink shadow-soft sm:p-8">
+                <ProgressPills active="details" />
+                <div className="mt-6">
+                  <h3 className="font-serif text-3xl font-bold">Tell Krivya where it is going.</h3>
+                  <p className="mt-3 text-base leading-7 text-ink/68">A few details help Krivya confirm availability, timing, and personalization.</p>
                 </div>
 
-                <div className="mt-6 grid gap-5 xl:grid-cols-[1fr_0.9fr]">
-                  <section className="rounded-2xl border border-plum/10 bg-petal p-5">
-                    <p className="text-xs font-black uppercase tracking-[0.16em] text-rose">Selected gift components</p>
-                    <div className="mt-4 grid gap-3">
-                      {basket.map((entry) => (
-                        <article key={entry.item.id} className="grid grid-cols-[72px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-white p-3">
-                          <div className="relative aspect-square overflow-hidden rounded-xl bg-petal">
-                            <Image src={entry.item.imagePath} alt="" fill sizes="72px" className="object-cover" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-black uppercase tracking-[0.14em] text-rose">{entry.item.category}</p>
-                            <h4 className="mt-1 text-sm font-black">{entry.item.name}</h4>
-                            <p className="mt-1 text-xs leading-5 text-ink/55">{entry.item.description}</p>
-                          </div>
-                          <p className="rounded-full bg-petal px-3 py-1 text-sm font-black">x{entry.quantity}</p>
-                        </article>
+                {errors.length > 0 ? <ErrorList errors={errors} /> : null}
+
+                <div className="mt-7 grid gap-6">
+                  <fieldset className="grid gap-3">
+                    <legend className="text-sm font-black uppercase tracking-[0.16em] text-rose">Delivery</legend>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {deliveryDestinations.map((destination) => (
+                        <button
+                          key={destination}
+                          type="button"
+                          className={`focus-ring rounded-2xl border p-4 text-left text-base font-black transition ${
+                            details.destination === destination ? "border-plum bg-petal text-plum" : "border-plum/12 bg-white hover:border-plum/45"
+                          }`}
+                          onClick={() => updateDetails("destination", destination as DeliveryDestination)}
+                        >
+                          {destination}
+                        </button>
                       ))}
                     </div>
-                    <p className="mt-4 text-sm font-semibold leading-6 text-ink/62">Final availability and pricing will be confirmed by Krivya.</p>
-                  </section>
+                    <label className="grid gap-2 text-sm font-black">
+                      Preferred delivery date
+                      <input
+                        className="focus-ring rounded-2xl border border-plum/15 bg-petal px-4 py-3 text-base font-semibold"
+                        type="date"
+                        min={todayIsoDate()}
+                        value={details.preferredDeliveryDate}
+                        onChange={(event) => updateDetails("preferredDeliveryDate", event.target.value)}
+                        required
+                      />
+                    </label>
+                  </fieldset>
 
-                  <section className="rounded-2xl border border-plum/10 bg-white p-5">
-                    <p className="text-xs font-black uppercase tracking-[0.16em] text-rose">Request details</p>
-                    <div className="mt-4 grid gap-3">
-                      <ReviewRow label="Destination" value={details.destination} />
-                      <ReviewRow label="Occasion" value={details.occasion} />
-                      <ReviewRow label="Recipient" value={details.recipient} />
-                      <ReviewRow label="Preferred date" value={details.preferredDeliveryDate} />
-                      <ReviewRow label="Approximate budget" value={details.budget} />
-                      <ReviewRow label="Customer" value={details.customerName} />
-                      <ReviewRow label="Phone / WhatsApp" value={details.phone} />
-                      <ReviewRow label="Email" value={details.email || "Not provided"} />
-                      <ReviewRow label="Personalization" value={details.personalizationNotes || "Not provided"} />
-                      <ReviewRow label="Gift message" value={details.giftMessage || "Not provided"} />
-                      <ReviewRow label="Additional notes" value={details.additionalNotes || "Not provided"} />
+                  <fieldset className="grid gap-3">
+                    <legend className="text-sm font-black uppercase tracking-[0.16em] text-rose">Occasion</legend>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {giftOccasions.map((occasion) => (
+                        <button
+                          key={occasion}
+                          type="button"
+                          className={`focus-ring rounded-2xl border p-4 text-left text-base font-black transition ${
+                            details.occasion === occasion ? "border-plum bg-petal text-plum" : "border-plum/12 bg-white hover:border-plum/45"
+                          }`}
+                          onClick={() => updateDetails("occasion", occasion as GiftOccasion)}
+                        >
+                          {occasion}
+                        </button>
+                      ))}
                     </div>
-                  </section>
-                </div>
-              </div>
-            ) : null}
+                    <TextField label="Recipient / who the gift is for" value={details.recipient} onChange={(value) => updateDetails("recipient", value)} required />
+                  </fieldset>
 
-            {step === 6 && submittedRequest ? (
-              <div className="rounded-[1.5rem] bg-petal p-6 text-center">
-                <p className="text-sm font-black uppercase tracking-[0.18em] text-rose">Your gift request is ready.</p>
-                <p className="mt-4 text-sm font-black uppercase tracking-[0.18em] text-ink/55">Gift Request ID</p>
-                <h3 className="mt-2 font-serif text-4xl font-bold text-plum">{submittedRequest.requestCode}</h3>
-                <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-ink/70">
-                  Continue to WhatsApp and send your Request ID to Krivya. Your gift selections and details are saved with this request.
-                </p>
-                <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-                  <a className="focus-ring rounded-full bg-plum px-6 py-4 text-base font-black text-white transition hover:bg-rose" href={buildKrivyaRequestWhatsAppUrl(submittedRequest.requestCode)} target="_blank" rel="noreferrer">
-                    Continue on WhatsApp
-                  </a>
-                  <Link className="focus-ring rounded-full border border-plum/20 px-6 py-4 text-base font-black text-plum transition hover:bg-white" href={`/request/${submittedRequest.requestCode}`}>
-                    View My Request
-                  </Link>
-                </div>
-              </div>
-            ) : null}
+                  <fieldset className="grid gap-5 sm:grid-cols-2">
+                    <legend className="text-sm font-black uppercase tracking-[0.16em] text-rose sm:col-span-2">Customer</legend>
+                    <TextField label="Customer name" value={details.customerName} onChange={(value) => updateDetails("customerName", value)} required />
+                    <TextField label="Phone or WhatsApp number" value={details.phone} onChange={(value) => updateDetails("phone", value)} required />
+                    <TextField label="Email optional" value={details.email ?? ""} onChange={(value) => updateDetails("email", value)} type="email" />
+                  </fieldset>
 
-            {step < 6 ? (
+                  <fieldset className="grid gap-5">
+                    <legend className="text-sm font-black uppercase tracking-[0.16em] text-rose">Personalization</legend>
+                    <TextArea label="Personalization details" value={details.personalizationNotes} onChange={(value) => updateDetails("personalizationNotes", value)} placeholder="Colors, photos, names, theme, or special details." />
+                    <TextArea label="Gift message / card message" value={details.giftMessage} onChange={(value) => updateDetails("giftMessage", value)} placeholder="Message Krivya should include on the card." />
+                    <TextArea label="Additional notes" value={details.additionalNotes} onChange={(value) => updateDetails("additionalNotes", value)} placeholder="Delivery notes, recipient preferences, substitutions, or timing context." />
+                  </fieldset>
+                </div>
+
+                <div className="mt-8 flex flex-col gap-3 border-t border-plum/10 pt-6 sm:flex-row sm:justify-between">
+                  <button type="button" className="focus-ring rounded-full border border-plum/20 px-6 py-4 text-base font-black text-plum transition hover:bg-petal" onClick={() => setStep("shop")}>
+                    Back to Store
+                  </button>
+                  <button type="button" className="focus-ring rounded-full bg-plum px-6 py-4 text-base font-black text-white transition hover:bg-rose" onClick={proceedToReview}>
+                    Review Gift
+                  </button>
+                </div>
+              </section>
+
+              <BasketPanel basket={basket} itemCount={itemCount} open={basketOpen} onClose={() => setBasketOpen(false)} onClear={clearBasket} onRemove={removeItem} onQuantity={updateQuantity} onContinue={proceedToReview} compact />
+            </div>
+          ) : null}
+
+          {step === "review" ? (
+            <section className="rounded-[2rem] bg-white p-5 text-ink shadow-soft sm:p-8">
+              <ProgressPills active="review" />
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="font-serif text-3xl font-bold">Review Your Gift</h3>
+                  <p className="mt-3 max-w-2xl text-base leading-7 text-ink/68">Confirm the items and details before creating the Request ID.</p>
+                </div>
+                <button type="button" className="focus-ring rounded-full border border-plum/20 px-5 py-3 text-sm font-black text-plum" onClick={() => setStep("details")}>
+                  Edit details
+                </button>
+              </div>
+
+              <div className="mt-6 grid gap-5 xl:grid-cols-[1fr_0.9fr]">
+                <section className="rounded-2xl border border-plum/10 bg-petal p-5">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-rose">Your Gift</p>
+                  <GiftItemsList items={basket} />
+                  <p className="mt-4 text-sm font-semibold leading-6 text-ink/62">Final availability and pricing will be confirmed by Krivya.</p>
+                </section>
+
+                <section className="rounded-2xl border border-plum/10 bg-white p-5">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-rose">Request details</p>
+                  <div className="mt-4 grid gap-3">
+                    <ReviewRow label="Destination" value={details.destination} />
+                    <ReviewRow label="Preferred date" value={details.preferredDeliveryDate} />
+                    <ReviewRow label="Occasion" value={details.occasion} />
+                    <ReviewRow label="Recipient" value={details.recipient} />
+                    <ReviewRow label="Customer" value={details.customerName} />
+                    <ReviewRow label="Phone / WhatsApp" value={details.phone} />
+                    <ReviewRow label="Email" value={details.email || "Not provided"} />
+                    <ReviewRow label="Personalization" value={details.personalizationNotes || "Not provided"} />
+                    <ReviewRow label="Gift message" value={details.giftMessage || "Not provided"} />
+                    <ReviewRow label="Additional notes" value={details.additionalNotes || "Not provided"} />
+                  </div>
+                </section>
+              </div>
+
               <div className="mt-8 flex flex-col gap-3 border-t border-plum/10 pt-6 sm:flex-row sm:justify-between">
-                <button
-                  type="button"
-                  className="focus-ring rounded-full border border-plum/20 px-6 py-4 text-base font-black text-plum transition hover:bg-petal disabled:cursor-not-allowed disabled:opacity-45"
-                  onClick={() => setStep((current) => Math.max(1, current - 1))}
-                  disabled={step === 1}
-                >
+                <button type="button" className="focus-ring rounded-full border border-plum/20 px-6 py-4 text-base font-black text-plum transition hover:bg-petal" onClick={() => setStep("details")}>
                   Back
                 </button>
-                {step < 4 ? (
-                  <button type="button" className="focus-ring rounded-full bg-plum px-6 py-4 text-base font-black text-white transition hover:bg-rose" onClick={() => setStep((current) => current + 1)}>
-                    Continue
-                  </button>
-                ) : step === 4 ? (
-                  <button type="button" className="focus-ring rounded-full bg-plum px-6 py-4 text-base font-black text-white transition hover:bg-rose" onClick={proceedToReview}>
-                    Review Your Gift
-                  </button>
-                ) : (
-                  <button type="submit" className="focus-ring rounded-full bg-plum px-6 py-4 text-base font-black text-white transition hover:bg-rose">
-                    Create Gift Request
-                  </button>
-                )}
+                <button type="submit" className="focus-ring rounded-full bg-plum px-6 py-4 text-base font-black text-white transition hover:bg-rose">
+                  Create Gift Request
+                </button>
               </div>
-            ) : null}
-          </form>
+            </section>
+          ) : null}
 
-          <BasketPanel
-            basket={basket}
-            itemCount={itemCount}
-            open={basketOpen}
-            onClose={() => setBasketOpen(false)}
-            onClear={clearBasket}
-            onRemove={removeItem}
-            onQuantity={updateQuantity}
-          />
-        </div>
+          {step === "success" && submittedRequest ? (
+            <section className="rounded-[2rem] bg-white p-6 text-center text-ink shadow-soft sm:p-10">
+              <ProgressPills active="success" />
+              <p className="mt-6 text-sm font-black uppercase tracking-[0.18em] text-rose">Your gift request is ready.</p>
+              <p className="mt-4 text-sm font-black uppercase tracking-[0.18em] text-ink/55">Gift Request ID</p>
+              <h3 className="mt-2 font-serif text-4xl font-bold text-plum sm:text-5xl">{submittedRequest.requestCode}</h3>
+              <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-ink/70">Continue to WhatsApp and send your Request ID to Krivya.</p>
+              <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+                <a className="focus-ring rounded-full bg-plum px-6 py-4 text-base font-black text-white transition hover:bg-rose" href={buildKrivyaRequestWhatsAppUrl(submittedRequest.requestCode)} target="_blank" rel="noreferrer">
+                  Continue on WhatsApp
+                </a>
+                <Link className="focus-ring rounded-full border border-plum/20 px-6 py-4 text-base font-black text-plum transition hover:bg-petal" href={`/request/${submittedRequest.requestCode}`}>
+                  View Your Request
+                </Link>
+              </div>
+            </section>
+          ) : null}
+        </form>
       </div>
 
       <button
         type="button"
         className="focus-ring fixed bottom-4 left-4 right-4 z-30 rounded-full bg-ribbon px-5 py-4 text-sm font-black text-ink shadow-soft lg:hidden"
         onClick={() => setBasketOpen(true)}
-        aria-label={`Open gift basket with ${itemCount} items`}
+        aria-label={`Open your gift basket with ${itemCount} items`}
       >
-        Gift Basket ({itemCount}) · Review Gift
+        Your Gift · {itemCount}
       </button>
     </section>
+  );
+}
+
+function ProgressPills({ active }: { active: BuilderStep }) {
+  const steps: Array<{ id: BuilderStep; label: string }> = [
+    { id: "shop", label: "Your Gift" },
+    { id: "details", label: "Delivery" },
+    { id: "review", label: "Review" },
+    { id: "success", label: "Request ID" },
+  ];
+
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-2" aria-label="Gift request progress">
+      {steps.map((item, index) => (
+        <span key={item.id} className={`min-w-fit rounded-full px-4 py-3 text-sm font-black ${active === item.id ? "bg-plum text-white" : "bg-petal text-ink/65"}`}>
+          {index + 1}. {item.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function ErrorList({ errors }: { errors: string[] }) {
+  return (
+    <div className="mt-5 rounded-2xl border border-rose/25 bg-rose/8 p-4" role="alert">
+      <p className="font-black text-rose">Please check:</p>
+      <ul className="mt-2 grid gap-1 text-sm text-ink/75">
+        {errors.map((error) => (
+          <li key={error}>{error}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -537,6 +568,26 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function GiftItemsList({ items }: { items: GiftBasketItem[] }) {
+  return (
+    <div className="mt-4 grid gap-3">
+      {items.map((entry) => (
+        <article key={entry.item.id} className="grid grid-cols-[72px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-white p-3">
+          <div className="relative aspect-square overflow-hidden rounded-xl bg-petal">
+            <Image src={entry.item.imagePath} alt="" fill sizes="72px" className="object-cover" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-rose">{getStoreCategory(entry.item)}</p>
+            <h4 className="mt-1 text-sm font-black">{entry.item.name}</h4>
+            <p className="mt-1 text-xs leading-5 text-ink/55">{entry.item.description}</p>
+          </div>
+          <p className="rounded-full bg-petal px-3 py-1 text-sm font-black">x{entry.quantity}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function BasketPanel({
   basket,
   itemCount,
@@ -545,6 +596,8 @@ function BasketPanel({
   onClear,
   onRemove,
   onQuantity,
+  onContinue,
+  compact = false,
 }: {
   basket: GiftBasketItem[];
   itemCount: number;
@@ -553,14 +606,16 @@ function BasketPanel({
   onClear: () => void;
   onRemove: (itemId: string) => void;
   onQuantity: (itemId: string, quantity: number) => void;
+  onContinue: () => void;
+  compact?: boolean;
 }) {
   return (
     <>
       {open ? <button type="button" className="fixed inset-0 z-40 bg-ink/60 lg:hidden" aria-label="Close gift basket overlay" onClick={onClose} /> : null}
       <aside
-        className={`fixed bottom-0 left-0 right-0 z-50 max-h-[82vh] overflow-y-auto rounded-t-[2rem] bg-white p-5 text-ink shadow-soft transition lg:sticky lg:top-28 lg:z-auto lg:max-h-[calc(100vh-8rem)] lg:rounded-[2rem] lg:p-6 ${
-          open ? "translate-y-0" : "translate-y-[calc(100%-5rem)] lg:translate-y-0"
-        }`}
+        className={`fixed bottom-0 left-0 right-0 z-50 max-h-[82vh] overflow-y-auto rounded-t-[2rem] bg-white p-5 text-ink shadow-soft transition lg:sticky lg:top-28 lg:z-auto lg:max-h-[calc(100vh-8rem)] lg:translate-y-0 lg:rounded-[2rem] lg:p-6 ${
+          open ? "translate-y-0" : "translate-y-full lg:translate-y-0"
+        } ${compact && !open ? "hidden lg:block" : ""}`}
         aria-label="Gift Basket"
       >
         <div className="flex items-center justify-between gap-3">
@@ -572,27 +627,33 @@ function BasketPanel({
             Close
           </button>
         </div>
-        <p className="mt-2 text-sm leading-6 text-ink/62">{itemCount} selected component{itemCount === 1 ? "" : "s"}</p>
+        <p className="mt-2 text-sm leading-6 text-ink/62">{itemCount} selected item{itemCount === 1 ? "" : "s"}</p>
         <p className="mt-2 text-sm font-semibold leading-6 text-ink/62">Final availability and pricing will be confirmed by Krivya.</p>
 
         {basket.length === 0 ? (
-          <div className="mt-6 rounded-2xl bg-petal p-5 text-sm leading-6 text-ink/68">Add flowers, chocolates, keepsakes, or other inspiration to prepare a clearer request.</div>
+          <div className="mt-6 rounded-2xl bg-petal p-5">
+            <p className="font-serif text-2xl font-bold text-plum">Your gift is waiting to be created.</p>
+            <p className="mt-2 text-sm leading-6 text-ink/68">Choose something special to begin.</p>
+            <button type="button" className="focus-ring mt-5 rounded-full bg-plum px-5 py-3 text-sm font-black text-white transition hover:bg-rose" onClick={onClose}>
+              Explore Gifts
+            </button>
+          </div>
         ) : (
           <div className="mt-5 grid gap-4">
             {basket.map((entry) => (
-              <article key={entry.item.id} className="grid grid-cols-[76px_1fr] gap-3 rounded-2xl border border-plum/10 p-3">
+              <article key={entry.item.id} className="grid grid-cols-[76px_minmax(0,1fr)] gap-3 rounded-2xl border border-plum/10 p-3">
                 <div className="relative aspect-square overflow-hidden rounded-xl bg-petal">
                   <Image src={entry.item.imagePath} alt="" fill sizes="76px" className="object-cover" />
                 </div>
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-rose">{entry.item.category}</p>
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-rose">{getStoreCategory(entry.item)}</p>
                   <h4 className="mt-1 text-sm font-black">{entry.item.name}</h4>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <button type="button" className="focus-ring grid size-9 place-items-center rounded-full border border-plum/20 font-black" onClick={() => onQuantity(entry.item.id, entry.quantity - 1)} aria-label={`Decrease ${entry.item.name}`}>
+                    <button type="button" className="focus-ring grid size-10 place-items-center rounded-full border border-plum/20 font-black" onClick={() => onQuantity(entry.item.id, entry.quantity - 1)} aria-label={`Decrease ${entry.item.name}`}>
                       -
                     </button>
                     <span className="min-w-8 text-center text-sm font-black">{entry.quantity}</span>
-                    <button type="button" className="focus-ring grid size-9 place-items-center rounded-full border border-plum/20 font-black" onClick={() => onQuantity(entry.item.id, entry.quantity + 1)} aria-label={`Increase ${entry.item.name}`}>
+                    <button type="button" className="focus-ring grid size-10 place-items-center rounded-full border border-plum/20 font-black" onClick={() => onQuantity(entry.item.id, entry.quantity + 1)} aria-label={`Increase ${entry.item.name}`}>
                       +
                     </button>
                     <button type="button" className="focus-ring rounded-full px-3 py-2 text-xs font-black text-rose underline-offset-4 hover:underline" onClick={() => onRemove(entry.item.id)}>
@@ -602,9 +663,17 @@ function BasketPanel({
                 </div>
               </article>
             ))}
-            <button type="button" className="focus-ring rounded-full border border-plum/20 px-4 py-3 text-sm font-black text-plum transition hover:bg-petal" onClick={onClear}>
-              Clear basket
-            </button>
+            <div className="grid gap-3">
+              <button type="button" className="focus-ring rounded-full bg-plum px-5 py-4 text-sm font-black text-white transition hover:bg-rose" onClick={onContinue}>
+                Continue
+              </button>
+              <button type="button" className="focus-ring rounded-full border border-plum/20 px-5 py-3 text-sm font-black text-plum transition hover:bg-petal" onClick={onClose}>
+                Continue Shopping
+              </button>
+              <button type="button" className="focus-ring rounded-full px-5 py-3 text-sm font-black text-rose underline-offset-4 hover:underline" onClick={onClear}>
+                Clear Gift
+              </button>
+            </div>
           </div>
         )}
       </aside>

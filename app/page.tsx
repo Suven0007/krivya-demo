@@ -12,10 +12,10 @@ const whatsappHref = `https://wa.me/${krivyaWhatsAppNumber}?text=${encodeURIComp
 
 const navItems = [
   { label: "Occasions", href: "#occasions" },
+  { label: "Gift Store", href: "#create-gift" },
   { label: "Creations", href: "#creations" },
   { label: "Personalize", href: "#personalize" },
   { label: "How it works", href: "#how-it-works" },
-  { label: "Gift Builder", href: "#create-gift" },
 ];
 
 const heroImages = [
@@ -73,11 +73,11 @@ export default function Home() {
         href="#create-gift"
         className="focus-ring sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:bg-ink focus:px-4 focus:py-3 focus:text-white"
       >
-        Skip to Gift Builder
+        Skip to Gift Store
       </a>
 
       <div className="bg-ink px-4 py-3 text-center text-sm font-semibold text-white">
-        Personalized gifts for thoughtful deliveries. Build your request first, then continue with Krivya on WhatsApp.
+        Personalized gifts for thoughtful deliveries. Browse, add to your gift, then continue with Krivya on WhatsApp.
       </div>
 
       <header className="sticky top-0 z-40 border-b border-plum/10 bg-white/88 backdrop-blur-xl">
@@ -103,7 +103,7 @@ export default function Home() {
               Demo Dashboard
             </Link>
             <a className="focus-ring rounded-full bg-plum px-5 py-3 text-sm font-bold text-white shadow-soft transition hover:bg-rose" href="#create-gift">
-              Build a Gift
+              Your Gift
             </a>
           </div>
 
@@ -135,7 +135,7 @@ export default function Home() {
                 Demo Dashboard
               </Link>
               <a className="focus-ring mt-2 rounded-full bg-plum px-5 py-3 text-center text-sm font-bold text-white" href="#create-gift" onClick={() => setMenuOpen(false)}>
-                Open Gift Builder
+                Open Gift Store
               </a>
             </div>
           </nav>
@@ -147,14 +147,14 @@ export default function Home() {
           <div className="flex flex-col justify-center">
             <p className="mb-5 w-fit rounded-full border border-rose/25 bg-white/75 px-4 py-2 text-sm font-bold uppercase tracking-[0.2em] text-rose">Love Across Miles</p>
             <h1 className="max-w-3xl font-serif text-5xl font-bold leading-[0.98] text-ink text-balance sm:text-6xl lg:text-7xl">
-              Build a personal gift request in minutes.
+              Browse beautiful gifts, then make them personal.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-ink/72">
-              Choose the destination, occasion, gift inspiration, and personal notes before starting the WhatsApp conversation.
+              Add flowers, chocolates, keepsakes, and thoughtful details to your gift before starting the WhatsApp conversation.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a className="focus-ring rounded-full bg-plum px-7 py-4 text-center text-base font-bold text-white shadow-soft transition hover:bg-rose" href="#create-gift">
-                Start Gift Builder
+                Explore Gifts
               </a>
               <a className="focus-ring rounded-full border border-plum/20 bg-white/70 px-7 py-4 text-center text-base font-bold text-plum transition hover:bg-white" href="#creations">
                 View inspiration
@@ -193,7 +193,7 @@ export default function Home() {
             <strong className="text-ink">Less back-and-forth:</strong> your Request ID keeps the gift details together so Krivya can review them clearly.
           </p>
           <a className="focus-ring rounded-sm font-bold text-plum underline-offset-4 hover:underline" href="#create-gift">
-            Build your request
+            Explore gifts
           </a>
         </div>
       </section>
@@ -202,7 +202,7 @@ export default function Home() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-10 max-w-2xl">
             <p className="mb-3 text-sm font-bold uppercase tracking-[0.22em] text-rose">Gift by occasion</p>
-            <h2 className="font-serif text-4xl font-bold text-ink text-balance sm:text-5xl">Choose the feeling first. Build the request around it.</h2>
+            <h2 className="font-serif text-4xl font-bold text-ink text-balance sm:text-5xl">Choose the feeling first. Then add what fits.</h2>
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {occasions.map((occasion) => (
@@ -219,6 +219,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <GiftBuilder />
 
       <section id="creations" className="section-pad bg-ink px-4 text-white sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
@@ -246,8 +248,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      <GiftBuilder />
 
       <section id="personalize" className="section-pad px-4 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
@@ -279,7 +279,7 @@ export default function Home() {
           </div>
           <div className="grid gap-5 md:grid-cols-3">
             {[
-              ["Build the request", "Choose the destination, occasion, gift inspiration, and personal details in one guided flow."],
+              ["Browse and add", "Choose gift ideas first, then open your basket when the selection feels right."],
               ["Get a Request ID", "Your browser saves the demo request and gives you a clear Gift Request ID to share."],
               ["Continue on WhatsApp", "Send the Request ID to Krivya so they can review the details and confirm availability."],
             ].map(([title, copy], index) => (
@@ -338,7 +338,7 @@ export default function Home() {
             <h2 className="mt-3 font-serif text-3xl font-bold text-ink sm:text-4xl">Ready to shape something personal?</h2>
           </div>
           <a className="focus-ring rounded-full bg-plum px-7 py-4 text-center text-base font-black text-white transition hover:bg-rose" href="#create-gift">
-            Build a Gift Request
+            Explore Gifts
           </a>
         </div>
       </section>

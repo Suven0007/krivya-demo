@@ -79,7 +79,7 @@ export function AdminDashboard() {
         occasion: "Birthday",
         recipient: "Sample recipient",
         preferredDeliveryDate: new Date(Date.now() + 86400000 * 7).toISOString().slice(0, 10),
-        budget: "Demo budget range",
+        budget: "",
         personalizationNotes: "Soft colors, personal photo, and a handwritten note.",
         giftMessage: "Love across miles.",
         additionalNotes: "Demo Request: sample data for sales presentation only.",
@@ -195,7 +195,7 @@ export function AdminDashboard() {
             {selectedRequest ? (
               <RequestDetail request={selectedRequest} onStatusChange={updateStatus} />
             ) : (
-              <div className="rounded-2xl bg-[#f8fbf9] p-6 text-sm leading-6 text-ink/64">Create a request from the Gift Builder or load one demo request to inspect details here.</div>
+              <div className="rounded-2xl bg-[#f8fbf9] p-6 text-sm leading-6 text-ink/64">Create a request from the Gift Store or load one demo request to inspect details here.</div>
             )}
           </section>
         </div>
@@ -235,7 +235,6 @@ function RequestDetail({ request, onStatusChange }: { request: GiftRequest; onSt
         <AdminRow label="Destination" value={request.customer.destination} />
         <AdminRow label="Occasion" value={request.customer.occasion} />
         <AdminRow label="Preferred date" value={request.customer.preferredDeliveryDate} />
-        <AdminRow label="Budget" value={request.customer.budget} />
         <AdminRow label="Created" value={new Date(request.createdAt).toLocaleString()} />
       </div>
 
