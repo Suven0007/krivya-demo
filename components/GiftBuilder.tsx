@@ -33,6 +33,15 @@ function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function formatDisplayDate(value: string) {
+  if (!isValidDeliveryDate(value)) {
+    return "";
+  }
+
+  const [year, month, day] = value.split("-");
+  return `${day}/${month}/${year}`;
+}
+
 function loadBasket(): GiftBasketItem[] {
   if (typeof window === "undefined" || typeof window.localStorage === "undefined") {
     return memoryBasket;
@@ -103,6 +112,7 @@ export function GiftBuilder() {
   const [lastAdded, setLastAdded] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const errorRef = useRef<HTMLDivElement | null>(null);
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -202,6 +212,12 @@ export function GiftBuilder() {
   function showErrors(nextErrors: string[]) {
     setErrors(nextErrors);
     window.requestAnimationFrame(() => {
+      if (nextErrors.includes("Choose a preferred delivery date.")) {
+        dateInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        window.setTimeout(() => dateInputRef.current?.focus(), 250);
+        return;
+      }
+
       errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   }
@@ -372,17 +388,11 @@ export function GiftBuilder() {
                         </button>
                       ))}
                     </div>
-                    <label className="grid gap-2 text-sm font-black">
-                      Preferred delivery date
-                      <input
-                        className="focus-ring rounded-2xl border border-plum/15 bg-petal px-4 py-3 text-base font-semibold"
-                        type="date"
-                        min={todayIsoDate()}
-                        value={details.preferredDeliveryDate}
-                        onChange={(event) => updateDetails("preferredDeliveryDate", event.target.value)}
-                        required
-                      />
-                    </label>
+                    <DateField
+                      inputRef={dateInputRef}
+                      value={details.preferredDeliveryDate}
+                      onChange={(value) => updateDetails("preferredDeliveryDate", value)}
+                    />
                   </fieldset>
 
                   <fieldset className="grid gap-3">
@@ -456,7 +466,7 @@ export function GiftBuilder() {
                 <div className="grid gap-4">
                   <ReviewSection title="Delivery">
                     <ReviewRow label="Country" value={details.destination} />
-                    <ReviewRow label="Preferred date" value={details.preferredDeliveryDate} />
+                    <ReviewRow label="Preferred date" value={formatDisplayDate(details.preferredDeliveryDate)} />
                   </ReviewSection>
                   <ReviewSection title="Occasion">
                     <ReviewRow label="Occasion" value={details.occasion} />
@@ -586,6 +596,47 @@ function TextField({
         type={type}
         required={required}
       />
+    </label>
+  );
+}
+
+function DateField({
+  inputRef,
+  value,
+  onChange,
+}: {
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const displayValue = formatDisplayDate(value) || "DD/MM/YYYY";
+
+  return (
+    <label className="grid gap-2 text-sm font-black">
+      Preferred delivery date
+      <span className="relative block rounded-2xl focus-within:outline focus-within:outline-[3px] focus-within:outline-offset-3 focus-within:outline-ribbon">
+        <span
+          className={`pointer-events-none flex min-h-14 w-full items-center justify-between rounded-2xl border border-plum/15 bg-petal px-4 py-3 text-left text-base font-semibold transition ${
+            value ? "text-ink" : "text-ink/50"
+          }`}
+          aria-hidden="true"
+        >
+          <span>{displayValue}</span>
+          <span className="text-lg text-plum">
+            📅
+          </span>
+        </span>
+        <input
+          ref={inputRef}
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          type="date"
+          min={todayIsoDate()}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          aria-label="Preferred delivery date"
+          required
+        />
+      </span>
     </label>
   );
 }
