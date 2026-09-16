@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { deliveryDestinations, giftCatalog, giftOccasions } from "@/lib/requests/catalog";
-import { localRequestRepository } from "@/lib/requests/localRequestRepository";
+import { apiRequestRepository } from "@/lib/requests/apiRequestRepository";
 import { buildKrivyaRequestWhatsAppUrl } from "@/lib/requests/whatsapp";
 import type { CustomerDetails, DeliveryDestination, GiftBasketItem, GiftItem, GiftOccasion, GiftRequest } from "@/lib/requests/types";
 
@@ -108,6 +108,7 @@ export function GiftBuilder() {
   const [details, setDetails] = useState<CustomerDetails>(initialDetails);
   const [submittedRequest, setSubmittedRequest] = useState<GiftRequest | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
+  const [submitError, setSubmitError] = useState("");
   const [basketOpen, setBasketOpen] = useState(false);
   const [lastAdded, setLastAdded] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -246,7 +247,7 @@ export function GiftBuilder() {
     }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isSubmitting) {
       return;
@@ -261,17 +262,28 @@ export function GiftBuilder() {
     }
 
     setIsSubmitting(true);
-    const request = localRequestRepository.createRequest({
-      customer: { ...details, budget: "" },
-      items: basket,
-    });
+    setSubmitError("");
 
-    setSubmittedRequest(request);
-    setBasket([]);
-    saveBasket([]);
-    setErrors([]);
-    setStep("success");
-    setIsSubmitting(false);
+    try {
+      const request = await apiRequestRepository.createRequest({
+        customer: { ...details, budget: "" },
+        items: basket,
+      });
+
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(`krivya.request.${request.requestCode}`, JSON.stringify(request));
+      }
+
+      setSubmittedRequest(request);
+      setBasket([]);
+      saveBasket([]);
+      setErrors([]);
+      setStep("success");
+    } catch {
+      setSubmitError("We couldn't save your gift request. Kindly try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -495,6 +507,11 @@ export function GiftBuilder() {
                   {isSubmitting ? "Creating Request..." : "Create Gift Request"}
                 </button>
               </div>
+              {submitError ? (
+                <p className="mt-4 rounded-2xl border border-rose/25 bg-rose/8 px-4 py-3 text-sm font-bold text-rose" role="alert">
+                  {submitError}
+                </p>
+              ) : null}
             </section>
           ) : null}
 

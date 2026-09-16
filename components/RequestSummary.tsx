@@ -2,20 +2,55 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { localRequestRepository } from "@/lib/requests/localRequestRepository";
+import { apiRequestRepository } from "@/lib/requests/apiRequestRepository";
 import { buildKrivyaRequestWhatsAppUrl } from "@/lib/requests/whatsapp";
 import type { GiftRequest } from "@/lib/requests/types";
 
 export function RequestSummary({ requestCode }: { requestCode: string }) {
   const [request, setRequest] = useState<GiftRequest | null | undefined>(undefined);
+  const [phone, setPhone] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setRequest(localRequestRepository.getRequest(requestCode));
+      const stored = window.sessionStorage.getItem(`krivya.request.${requestCode}`);
+      if (stored) {
+        try {
+          setRequest(JSON.parse(stored) as GiftRequest);
+          return;
+        } catch {
+          window.sessionStorage.removeItem(`krivya.request.${requestCode}`);
+        }
+      }
+
+      setRequest(null);
     }, 0);
 
     return () => window.clearTimeout(timer);
   }, [requestCode]);
+
+  async function loadRequest() {
+    if (!phone.trim()) {
+      setError("Enter the WhatsApp or phone number used on this request.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const loaded = await apiRequestRepository.getRequest(requestCode, phone);
+      if (!loaded) {
+        setError("Request not found for that phone number.");
+      }
+      setRequest(loaded);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Request couldn't be loaded. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   if (request === undefined) {
     return <Shell title="Loading request..." />;
@@ -24,12 +59,26 @@ export function RequestSummary({ requestCode }: { requestCode: string }) {
   if (!request) {
     return (
       <Shell title="Request not found">
-        <p className="mt-4 max-w-xl text-lg leading-8 text-ink/70">
-          This demo stores gift requests in the browser where they were created. If this Request ID was created on another device or browser, it will not appear here yet.
-        </p>
-        <Link className="focus-ring mt-8 inline-flex rounded-full bg-plum px-6 py-4 text-base font-black text-white" href="/gifts">
-          Create a Gift Request
-        </Link>
+        <div className="mt-6 max-w-xl rounded-[2rem] bg-white p-6 shadow-soft">
+          <p className="text-base leading-7 text-ink/70">For privacy, enter the WhatsApp or phone number used on this request to view the summary.</p>
+          <label className="mt-5 grid gap-2 text-sm font-black">
+            Phone / WhatsApp number
+            <input className="focus-ring rounded-2xl border border-plum/15 bg-petal px-4 py-3 text-base font-semibold" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+977..." />
+          </label>
+          {error ? (
+            <p className="mt-4 rounded-2xl border border-rose/25 bg-rose/8 px-4 py-3 text-sm font-bold text-rose" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <button type="button" className="focus-ring rounded-full bg-plum px-6 py-4 text-base font-black text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={loadRequest} disabled={loading}>
+              {loading ? "Loading..." : "View Request"}
+            </button>
+            <Link className="focus-ring rounded-full border border-plum/20 px-6 py-4 text-center text-base font-black text-plum transition hover:bg-petal" href="/gifts">
+              Create a Gift Request
+            </Link>
+          </div>
+        </div>
       </Shell>
     );
   }

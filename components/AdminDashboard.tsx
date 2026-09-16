@@ -4,14 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { giftCatalog } from "@/lib/requests/catalog";
-import { localRequestRepository } from "@/lib/requests/localRequestRepository";
+import { apiRequestRepository } from "@/lib/requests/apiRequestRepository";
 import { buildCustomerWhatsAppUrl } from "@/lib/requests/whatsapp";
 import type { GiftRequest, GiftRequestStatus } from "@/lib/requests/types";
 
 const statuses: Array<GiftRequestStatus | "All"> = ["All", "New", "Reviewing", "Contacted", "Confirmed", "Completed", "Cancelled"];
 const overviewStatuses: GiftRequestStatus[] = ["New", "Reviewing", "Contacted", "Confirmed", "Completed"];
-const demoMarker = "Demo Request";
+const ADMIN_TOKEN_STORAGE_KEY = "krivya.adminDemoToken.v1";
 
 function totalItems(request: GiftRequest) {
   return request.items.reduce((total, entry) => total + entry.quantity, 0);
@@ -64,12 +63,16 @@ export function AdminDashboard() {
   const [status, setStatus] = useState<GiftRequestStatus | "All">("All");
   const [selectedCode, setSelectedCode] = useState<string>("");
   const [statusMessage, setStatusMessage] = useState("");
+  const [adminToken, setAdminToken] = useState("");
+  const [tokenInput, setTokenInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const loaded = localRequestRepository.listRequests();
-      setRequests(loaded);
-      setSelectedCode((current) => current || loaded[0]?.requestCode || "");
+      const savedToken = window.sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) || "";
+      setAdminToken(savedToken);
+      setTokenInput(savedToken);
     }, 0);
 
     return () => window.clearTimeout(timer);
@@ -84,19 +87,44 @@ export function AdminDashboard() {
     return () => window.clearTimeout(timer);
   }, [statusMessage]);
 
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return requests.filter((request) => {
-      const matchesStatus = status === "All" || request.status === status;
-      const matchesQuery =
-        !needle ||
-        request.requestCode.toLowerCase().includes(needle) ||
-        request.customer.customerName.toLowerCase().includes(needle) ||
-        request.customer.phone.toLowerCase().includes(needle);
-      return matchesStatus && matchesQuery;
-    });
-  }, [query, requests, status]);
+  useEffect(() => {
+    if (!adminToken) {
+      return undefined;
+    }
 
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      setLoadError("");
+
+      try {
+        const loaded = await apiRequestRepository.listRequests({ query, status, adminToken });
+        if (!active) {
+          return;
+        }
+        setRequests(loaded);
+        setSelectedCode((current) => (loaded.some((request) => request.requestCode === current) ? current : loaded[0]?.requestCode || ""));
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+        setRequests([]);
+        setSelectedCode("");
+        setLoadError(error instanceof Error ? error.message : "Requests couldn't be loaded. Try again.");
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [adminToken, query, status]);
+
+  const filtered = requests;
   const selectedRequest = filtered.find((request) => request.requestCode === selectedCode) ?? filtered[0] ?? null;
   const overviewCounts = useMemo(
     () =>
@@ -107,59 +135,26 @@ export function AdminDashboard() {
     [requests],
   );
 
-  function refresh() {
-    setRequests(localRequestRepository.listRequests());
-  }
-
-  function updateStatus(requestCode: string, nextStatus: GiftRequestStatus) {
-    const updated = localRequestRepository.updateStatus(requestCode, nextStatus);
-    refresh();
-
-    if (updated) {
-      setSelectedCode(updated.requestCode);
-      setStatusMessage(`${updated.requestCode} moved to ${updated.status}.`);
-    }
-  }
-
-  function loadDemoRequest() {
-    const currentRequests = localRequestRepository.listRequests();
-    const existingDemo = currentRequests.find((request) => request.customer.additionalNotes.includes(demoMarker) || request.customer.customerName === demoMarker);
-
-    if (existingDemo) {
-      setRequests(currentRequests);
-      setSelectedCode(existingDemo.requestCode);
+  async function updateStatus(requestCode: string, nextStatus: GiftRequestStatus) {
+    if (!adminToken) {
       return;
     }
 
-    const request = localRequestRepository.createRequest({
-      customer: {
-        customerName: demoMarker,
-        phone: "+9779851414905",
-        email: "demo@example.com",
-        destination: "Australia",
-        occasion: "Birthday",
-        recipient: "Sample recipient",
-        preferredDeliveryDate: new Date(Date.now() + 86400000 * 7).toISOString().slice(0, 10),
-        budget: "",
-        personalizationNotes: "Soft colors, personal photo, and a handwritten note.",
-        giftMessage: "Love across miles.",
-        additionalNotes: "Demo Request: sample data for sales presentation only.",
-      },
-      items: [
-        { item: giftCatalog[0], quantity: 1 },
-        { item: giftCatalog[1], quantity: 2 },
-        { item: giftCatalog[3], quantity: 1 },
-      ],
-    });
-    refresh();
-    setSelectedCode(request.requestCode);
+    setLoadError("");
+    try {
+      const updated = await apiRequestRepository.updateStatus(requestCode, nextStatus, adminToken);
+      setRequests((current) => current.map((request) => (request.requestCode === updated.requestCode ? updated : request)));
+      setSelectedCode(updated.requestCode);
+      setStatusMessage(`${updated.requestCode} moved to ${updated.status}.`);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Request status couldn't be updated. Try again.");
+    }
   }
 
-  function resetLocalDemoData() {
-    localRequestRepository.clearAll();
-    setRequests([]);
-    setSelectedCode("");
-    setStatusMessage("");
+  function saveAccessCode() {
+    const trimmed = tokenInput.trim();
+    window.sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, trimmed);
+    setAdminToken(trimmed);
   }
 
   return (
@@ -173,16 +168,39 @@ export function AdminDashboard() {
             <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-rose">Demo request dashboard</p>
             <h1 className="mt-2 font-serif text-4xl font-bold leading-tight text-plum sm:text-5xl">Find the gift request behind every WhatsApp ID.</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-ink/64 sm:text-base sm:leading-7">
-              Paste a Request ID from WhatsApp, review the selected gifts and customer details, then update the request status. This demo uses this browser&apos;s local storage only.
+              Paste a Request ID from WhatsApp, review the selected gifts and customer details, then update the request status from the shared Supabase demo.
             </p>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:w-[360px] lg:grid-cols-1 xl:grid-cols-2">
-            <button type="button" className="focus-ring rounded-full bg-plum px-5 py-3 text-sm font-black text-white transition hover:bg-rose" onClick={loadDemoRequest}>
-              Load Sample Request
-            </button>
-            <button type="button" className="focus-ring rounded-full border border-plum/20 bg-white px-5 py-3 text-sm font-black text-plum transition hover:bg-petal" onClick={resetLocalDemoData}>
-              Clear Local Demo Data
-            </button>
+          <div className="rounded-3xl bg-white p-4 shadow-sm lg:w-[360px]">
+            <label className="grid gap-2 text-sm font-black">
+              Admin demo access code
+              <input
+                className="focus-ring rounded-2xl border border-ink/10 bg-[#f8fbf9] px-4 py-3 text-base"
+                type="password"
+                value={tokenInput}
+                onChange={(event) => setTokenInput(event.target.value)}
+                placeholder="Enter access code"
+              />
+            </label>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              <button type="button" className="focus-ring rounded-full bg-plum px-5 py-3 text-sm font-black text-white transition hover:bg-rose" onClick={saveAccessCode}>
+                Unlock Dashboard
+              </button>
+              <button
+                type="button"
+                className="focus-ring rounded-full border border-plum/20 bg-white px-5 py-3 text-sm font-black text-plum transition hover:bg-petal"
+                onClick={() => {
+                  window.sessionStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+                  setAdminToken("");
+                  setTokenInput("");
+                  setRequests([]);
+                  setSelectedCode("");
+                  setLoadError("");
+                }}
+              >
+                Lock
+              </button>
+            </div>
           </div>
         </div>
 
@@ -203,6 +221,11 @@ export function AdminDashboard() {
         {statusMessage ? (
           <p className="mt-5 rounded-2xl border border-[#22623f]/15 bg-[#e7f4ec] px-4 py-3 text-sm font-bold text-[#22623f]" role="status">
             {statusMessage}
+          </p>
+        ) : null}
+        {loadError ? (
+          <p className="mt-5 rounded-2xl border border-rose/25 bg-rose/8 px-4 py-3 text-sm font-bold text-rose" role="alert">
+            {loadError}
           </p>
         ) : null}
 
@@ -237,13 +260,19 @@ export function AdminDashboard() {
             </div>
 
             <div className="mt-4 flex items-center justify-between gap-3 text-xs font-black uppercase tracking-[0.14em] text-ink/45">
-              <span>{filtered.length} visible</span>
-              <span>{requests.length} local total</span>
+              <span>{loading ? "Loading" : `${filtered.length} visible`}</span>
+              <span>{requests.length} shared total</span>
             </div>
 
             <div className="mt-4 grid gap-3">
-              {filtered.length === 0 ? (
-                <div className="rounded-2xl bg-[#f8fbf9] p-6 text-sm leading-6 text-ink/64">No local demo requests match this Request ID, customer, phone, or status.</div>
+              {!adminToken ? (
+                <div className="rounded-2xl bg-[#f8fbf9] p-6 text-sm leading-6 text-ink/64">Enter the admin demo access code to load shared gift requests.</div>
+              ) : null}
+              {adminToken && loading ? (
+                <div className="rounded-2xl bg-[#f8fbf9] p-6 text-sm leading-6 text-ink/64">Loading shared requests...</div>
+              ) : null}
+              {adminToken && !loading && filtered.length === 0 ? (
+                <div className="rounded-2xl bg-[#f8fbf9] p-6 text-sm leading-6 text-ink/64">No requests match this Request ID or search.</div>
               ) : null}
               {filtered.map((request) => (
                 <RequestListCard key={request.requestCode} request={request} selected={selectedRequest?.requestCode === request.requestCode} onSelect={() => setSelectedCode(request.requestCode)} />
@@ -255,7 +284,7 @@ export function AdminDashboard() {
             {selectedRequest ? (
               <RequestDetail request={selectedRequest} onStatusChange={updateStatus} />
             ) : (
-              <div className="rounded-2xl bg-[#f8fbf9] p-6 text-sm leading-6 text-ink/64">Create a request from the Gift Store or load one sample request to inspect details here.</div>
+              <div className="rounded-2xl bg-[#f8fbf9] p-6 text-sm leading-6 text-ink/64">Create a request from the Gift Store, then search its Request ID here.</div>
             )}
           </section>
         </div>
@@ -279,7 +308,6 @@ function RequestListCard({ request, selected, onSelect }: { request: GiftRequest
           <p className="break-all text-base font-black text-plum">{request.requestCode}</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <p className="font-bold">{request.customer.customerName}</p>
-            {isDemoRequest(request) ? <span className="rounded-full bg-ribbon px-2 py-1 text-[0.65rem] font-black uppercase tracking-[0.14em] text-ink">Sample</span> : null}
           </div>
           <p className="mt-1 text-sm text-ink/62">
             {request.customer.destination} / {request.customer.occasion}
@@ -316,7 +344,6 @@ function RequestDetail({ request, onStatusChange }: { request: GiftRequest; onSt
           <h2 className="mt-2 break-all font-serif text-3xl font-bold text-plum sm:text-4xl">{request.requestCode}</h2>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <StatusPill status={request.status} />
-            {isDemoRequest(request) ? <p className="w-fit rounded-full bg-ribbon px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-ink">Sample request</p> : null}
           </div>
           <p className="mt-3 text-sm leading-6 text-ink/60">Everything Krivya needs to understand this customer&apos;s gift request is gathered below.</p>
         </div>
@@ -404,10 +431,6 @@ function DetailGroup({ title, children }: { title: string; children: ReactNode }
       <div className="mt-3 grid gap-3 md:grid-cols-2">{children}</div>
     </section>
   );
-}
-
-function isDemoRequest(request: GiftRequest) {
-  return request.customer.customerName === demoMarker || request.customer.additionalNotes.includes(demoMarker);
 }
 
 function AdminRow({ label, value }: { label: string; value: string }) {
