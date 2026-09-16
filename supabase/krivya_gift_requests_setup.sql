@@ -26,7 +26,10 @@ create table if not exists public.gift_requests (
   additional_notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint gift_requests_request_id_format check (request_id ~ '^KRV-[0-9]{6}-[A-F0-9]{4}$'),
+  constraint gift_requests_request_id_format check (
+    request_id ~ '^KRV-[0-9]{6}-[A-F0-9]{4}$'
+    or request_id ~ '^KRV-[0-9]{5}$'
+  ),
   constraint gift_requests_status_check check (status in ('New', 'Reviewing', 'Contacted', 'Confirmed', 'Completed', 'Cancelled')),
   constraint gift_requests_selected_items_array check (jsonb_typeof(selected_items) = 'array')
 );

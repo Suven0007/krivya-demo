@@ -35,36 +35,22 @@ function writeRequests(requests: GiftRequest[]) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
 }
 
-function randomSuffix() {
-  const bytes = new Uint8Array(2);
+function randomFiveDigitNumber() {
+  const bytes = new Uint32Array(1);
   if (typeof window !== "undefined" && window.crypto) {
     window.crypto.getRandomValues(bytes);
-    return Array.from(bytes)
-      .map((byte) => byte.toString(16).padStart(2, "0"))
-      .join("")
-      .toUpperCase();
+    return bytes[0] % 100000;
   }
 
-  return Math.floor(Math.random() * 65536)
-    .toString(16)
-    .padStart(4, "0")
-    .toUpperCase();
-}
-
-function dateStamp(date: Date) {
-  const year = String(date.getFullYear()).slice(-2);
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}${month}${day}`;
+  return Math.floor(Math.random() * 100000);
 }
 
 export function generateRequestCode(existingCodes: string[]) {
-  const stamp = dateStamp(new Date());
-  let candidate = `KRV-${stamp}-${randomSuffix()}`;
+  let candidate = `KRV-${String(randomFiveDigitNumber()).padStart(5, "0")}`;
   let attempts = 0;
 
   while (existingCodes.includes(candidate) && attempts < 12) {
-    candidate = `KRV-${stamp}-${randomSuffix()}`;
+    candidate = `KRV-${String(randomFiveDigitNumber()).padStart(5, "0")}`;
     attempts += 1;
   }
 
@@ -76,7 +62,7 @@ export const localRequestRepository: RequestRepository = {
     const requests = readRequests();
     const now = new Date().toISOString();
     const request: GiftRequest = {
-      id: typeof window !== "undefined" && window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${randomSuffix()}`,
+      id: typeof window !== "undefined" && window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${randomFiveDigitNumber()}`,
       requestCode: generateRequestCode(requests.map((item) => item.requestCode)),
       customer: draft.customer,
       items: draft.items,

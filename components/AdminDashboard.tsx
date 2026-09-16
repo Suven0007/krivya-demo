@@ -239,7 +239,7 @@ export function AdminDashboard() {
                     className="focus-ring w-full rounded-2xl border border-ink/10 bg-[#f8fbf9] px-4 py-3 pr-20 text-base font-semibold uppercase tracking-[0.03em]"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
-                    placeholder="KRV-260916-A7F4"
+                    placeholder="KRV-48372"
                   />
                   {query ? (
                     <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-3 py-1.5 text-xs font-black text-plum hover:bg-petal" onClick={() => setQuery("")}>

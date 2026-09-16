@@ -98,4 +98,4 @@ Keep service-role credentials server-only and never expose them in client compon
 
 ## Request ID Notes
 
-The demo currently generates request codes like `KRV-YYMMDD-XXXX`. In production, keep `request_code` unique at the database level and retry generation if a collision occurs.
+The demo currently generates request codes like `KRV-#####`. In production, keep `request_code` unique at the database level and retry generation if a collision occurs.
